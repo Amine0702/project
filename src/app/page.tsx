@@ -1,30 +1,8 @@
-// pages/index.js
-import Header from './components/Header';
-import Slider from './components/Slider';
-import Services from './components/Services';
-import CompanyInfo from './components/CompanyInfo';
-import Features from './components/Features';
-import Footer from './components/Footer';
-import "./landing.css";
+import Image from "next/image";
+import LandinPage from "@/app/landing/page";
 
-export default function LandinPage() {
+export default function Home() {
   return (
-    <div>
-      <Header />
-      <Slider />
-      <section id="services">
-        <Services />
-      </section>
-
-      <section id="CompanyInfo">
-        <CompanyInfo />
-      </section>
-
-      <section id="features">
-        <Features />
-      </section>
-
-      <Footer />
-    </div>
+    <LandinPage />
   );
 }
