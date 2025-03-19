@@ -1,197 +1,106 @@
-import { useAppSelector } from '../../(components)/redux';
+import { useAppSelector } from "@/app/(components)/redux";
+import { useGetTasksQuery } from "@/app/state/api";
 import { DisplayOption, Gantt, ViewMode } from "gantt-task-react";
 import "gantt-task-react/dist/index.css";
-import React, { ReactNode, useMemo, useState } from "react";
-
-type User = {
-  userId: number;
-  profilePictureUrl: string;
-  username: string;
-};
-
-type Task = {
-  description: ReactNode;
-  points: number;
-  attachments: Attachment[];
-  comments: string | string[];
-  dueDate: Date;
-  startDate: Date;
-  id: number;
-  title: string;
-  status: string;
-  tags: string;
-  priority: string;
-  // Propriétés optionnelles pour gérer les utilisateurs
-  assignee?: User;
-  author?: User;
-};
-type Attachment = {
-  fileURL: string;
-  fileName: string;
-};
-
-const initialTasks: Task[] = [
-  {
-    id: 1,
-    title: "Tâche 1",
-    status: "To Do",
-    priority: "Urgent",
-    startDate: new Date("2025-08-20"),
-    dueDate: new Date("2025-09-20"),
-    comments: "very good",
-    tags: "Network",
-    attachments: [
-      {
-        fileURL: "/i2.jpg",
-        fileName: "Image de démonstration",
-      },
-    ],
-    points: 0,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p2.jpeg",
-      username: "Bob",
-    },
-  },
-  {
-    id: 2,
-    title: "Tâche 2",
-    status: "Work In Progress",
-    priority: "High",
-    startDate: new Date("2025-08-26"),
-    dueDate: new Date("2025-10-20"),
-    comments: "corrige them",
-    tags: "Deploiment",
-    attachments: [],
-    points: 1,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p3.jpeg",
-      username: "Bob",
-    },
-  },
-  {
-    id: 3,
-    title: "Tâche 3",
-    status: "Under Review",
-    priority: "Medium",
-    startDate: new Date("2025-08-25"),
-    dueDate: new Date("2025-09-20"),
-    comments: "no its very bad",
-    tags: "Network",
-    attachments: [],
-    points: 2,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p4.jpeg",
-      username: "Bob",
-    },
-  },
-  {
-    id: 4,
-    title: "Tâche 4",
-    status: "Completed",
-    priority: "Low",
-    startDate: new Date("2025-08-20"),
-    dueDate: new Date("2025-08-20"),
-    comments: "ok nice",
-    tags: "development",
-    attachments: [],
-    points: 3,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p5.jpeg",
-      username: "Bob",
-    },
-  },
-  {
-    id: 5,
-    title: "Tâche 5",
-    status: "Completed",
-    priority: "Urgent",
-    startDate: new Date("2025-08-20"),
-    dueDate: new Date("2025-08-20"),
-    comments: "lets see it",
-    tags: "Network , Network",
-    attachments: [],
-    points: 4,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p6.jpeg",
-      username: "Bob",
-    },
-  },
-];
+import React, { useMemo, useState } from "react";
 
 type Props = {
-    id: string;
+  id: string;
   setIsModalNewTaskOpen: (isOpen: boolean) => void;
 };
 
 type TaskTypeItems = "task" | "milestone" | "project";
 
-
-function TimeLineView({ id, setIsModalNewTaskOpen }: Props) {
+const Timeline = ({ id, setIsModalNewTaskOpen }: Props) => {
   const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
-  
+  const {
+    data: tasks,
+    error,
+    isLoading,
+  } = useGetTasksQuery({ projectId: Number(id) });
+
   const [displayOptions, setDisplayOptions] = useState<DisplayOption>({
     viewMode: ViewMode.Month,
     locale: "en-US",
   });
 
+  // Vérifier les tâches valides
   const ganttTasks = useMemo(() => {
     return (
-      initialTasks?.map((task) => ({
-        start: new Date(task.startDate ),
-        end: new Date(task.dueDate ),
-        name: task.title,
-        id: `Task-${task.id}`,
-        type: "task" as TaskTypeItems,
-        progress: task.points ? (task.points / 10) * 100 : 0,
-        isDisabled: false,
-      })) || []
-    );
-  }, [initialTasks]);
+      tasks?.map((task) => {
+        // Vérification si startDate et dueDate sont valides
+        const startDate = task.startDate ? new Date(task.startDate) : null;
+        const dueDate = task.dueDate ? new Date(task.dueDate) : null;
 
-  {/* for change mounth week day changed to */}
+        // Si startDate ou dueDate est invalide, ignorer cette tâche
+        if (!startDate || !dueDate || isNaN(startDate.getTime()) || isNaN(dueDate.getTime())) {
+          return null; // Ignorer cette tâche
+        }
+
+        return {
+          start: startDate,
+          end: dueDate,
+          name: task.title,
+          id: `Task-${task.id}`,
+          type: "task" as TaskTypeItems,
+          progress: task.points ? (task.points / 10) * 100 : 0,
+          isDisabled: false,
+        };
+      }) || []
+    ).filter((task) => task !== null); // Filtrer les tâches nulles
+  }, [tasks]);
+
   const handleViewModeChange = (
-    event: React.ChangeEvent<HTMLSelectElement>,
+    event: React.ChangeEvent<HTMLSelectElement>
   ) => {
     setDisplayOptions((prev) => ({
       ...prev,
       viewMode: event.target.value as ViewMode,
     }));
   };
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error || !tasks) return <div>An error occurred while fetching tasks</div>;
+
+  // Vérification si il y a des tâches valides
+  if (ganttTasks.length === 0) {
+    return (
+      <div className="px-4 xl:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 py-5">
+          <h1 className="me-2 text-lg font-bold dark:text-white">
+            Project Tasks Timeline
+          </h1>
+          <div className="relative inline-block w-64">
+            <select
+              className="focus:shadow-outline block w-full appearance-none rounded border border-gray-400 bg-white px-4 py-2 pr-8 leading-tight shadow hover:border-gray-500 focus:outline-none dark:border-dark-secondary dark:bg-dark-secondary dark:text-white"
+              value={displayOptions.viewMode}
+              onChange={handleViewModeChange}
+            >
+              <option value={ViewMode.Day}>Day</option>
+              <option value={ViewMode.Week}>Week</option>
+              <option value={ViewMode.Month}>Month</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-md bg-white shadow dark:bg-dark-secondary dark:text-white">
+          <div className="px-4 py-5">
+            <p className="text-center text-lg font-medium">
+              No tasks available for this project.
+            </p>
+          </div>
+          <div className="px-4 pb-5 pt-1">
+            <button
+              className="flex items-center rounded bg-blue-primary px-3 py-2 text-white hover:bg-blue-600"
+              onClick={() => setIsModalNewTaskOpen(true)}
+            >
+              Add New Task
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 xl:px-6">
@@ -233,7 +142,7 @@ function TimeLineView({ id, setIsModalNewTaskOpen }: Props) {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default TimeLineView
+export default Timeline;

@@ -1,166 +1,18 @@
 "use client";
 
-import React, { ReactNode, useState } from "react";
 import { useAppSelector } from "@/app/(components)/redux";
 import Header from "@/app/(components)/Header";
 import ModalNewTask from "@/app/(components)/ModalNewTask";
 import TaskCard from "@/app/(components)/TaskCard";
 import { dataGridClassNames, dataGridSxStyles } from "@/app/lib/utils";
+import {
+  Priority,
+  Task,
+  useGetAuthUserQuery,
+  useGetTasksByUserQuery,
+} from "@/app/state/api";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
-
-// Définition du type Priority selon les valeurs possibles
-type Priority = "Urgent" | "High" | "Medium" | "Low" | "Backlog";
-
-type User = {
-  userId: number;
-  profilePictureUrl: string;
-  username: string;
-};
-
-type Attachment = {
-  fileURL: string;
-  fileName: string;
-};
-
-type Task = {
-  id: number;
-  title: string;
-  description: ReactNode;
-  points: number;
-  attachments: Attachment[];
-  comments: string | string[];
-  dueDate: Date;
-  startDate: Date;
-  status: string;
-  tags: string;
-  priority: string;
-  // Propriétés optionnelles pour gérer les utilisateurs
-  assignee?: User;
-  author?: User;
-};
-
-const initialTasks: Task[] = [
-  {
-    id: 1,
-    title: "Tâche 1",
-    status: "To Do",
-    priority: "Urgent",
-    startDate: new Date("2025-08-20"),
-    dueDate: new Date("2025-08-20"),
-    comments: "very good",
-    tags: "Network",
-    attachments: [
-      {
-        fileURL: "/i2.jpg",
-        fileName: "Image de démonstration",
-      },
-    ],
-    points: 0,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p2.jpeg",
-      username: "Bob",
-    },
-  },
-  {
-    id: 2,
-    title: "Tâche 2",
-    status: "Work In Progress",
-    priority: "High",
-    startDate: new Date("2025-08-20"),
-    dueDate: new Date("2025-08-20"),
-    comments: "corrige them",
-    tags: "Deploiment",
-    attachments: [],
-    points: 1,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p3.jpeg",
-      username: "Bob",
-    },
-  },
-  {
-    id: 3,
-    title: "Tâche 3",
-    status: "Under Review",
-    priority: "Medium",
-    startDate: new Date("2025-08-20"),
-    dueDate: new Date("2025-08-20"),
-    comments: "no its very bad",
-    tags: "Network",
-    attachments: [],
-    points: 2,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p4.jpeg",
-      username: "Bob",
-    },
-  },
-  {
-    id: 4,
-    title: "Tâche 4",
-    status: "Completed",
-    priority: "Low",
-    startDate: new Date("2025-08-20"),
-    dueDate: new Date("2025-08-20"),
-    comments: "ok nice",
-    tags: "development",
-    attachments: [],
-    points: 3,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p5.jpeg",
-      username: "Bob",
-    },
-  },
-  {
-    id: 5,
-    title: "Tâche 5",
-    status: "Completed",
-    priority: "Backlog",
-    startDate: new Date("2025-08-20"),
-    dueDate: new Date("2025-08-20"),
-    comments: "lets see it",
-    tags: "Network , Network",
-    attachments: [],
-    points: 4,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p6.jpeg",
-      username: "Bob",
-    },
-  },
-];
+import React, { useState } from "react";
 
 type Props = {
   priority: Priority;
@@ -211,29 +63,37 @@ const columns: GridColDef[] = [
     field: "author",
     headerName: "Author",
     width: 150,
-    renderCell: (params) => params.value?.username || "Unknown",
+    renderCell: (params) => params.value.username || "Unknown",
   },
   {
     field: "assignee",
     headerName: "Assignee",
     width: 150,
-    renderCell: (params) => params.value?.username || "Unassigned",
+    renderCell: (params) => params.value.username || "Unassigned",
   },
 ];
 
 const ReusablePriorityPage = ({ priority }: Props) => {
-  const [view, setView] = useState<"list" | "table">("list");
+  const [view, setView] = useState("list");
   const [isModalNewTaskOpen, setIsModalNewTaskOpen] = useState(false);
 
-  // Utilisation des tâches locales sans appel au backend
-  const tasks: Task[] = initialTasks;
+  const { data: currentUser } = useGetAuthUserQuery({});
+  const userId = currentUser?.userDetails?.userId ?? null;
+  const {
+    data: tasks,
+    isLoading,
+    isError: isTasksError,
+  } = useGetTasksByUserQuery(userId || 0, {
+    skip: userId === null,
+  });
 
   const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
 
-  // Filtrer les tâches selon la priorité passée en props
-  const filteredTasks = tasks.filter(
-    (task: Task) => task.priority === priority
+  const filteredTasks = tasks?.filter(
+    (task: Task) => task.priority === priority,
   );
+
+  if (isTasksError || !tasks) return <div>Error fetching tasks</div>;
 
   return (
     <div className="m-5 p-4">
@@ -264,29 +124,34 @@ const ReusablePriorityPage = ({ priority }: Props) => {
         <button
           className={`px-4 py-2 ${
             view === "table" ? "bg-gray-300" : "bg-white"
-          } rounded-r`}
+          } rounded-l`}
           onClick={() => setView("table")}
         >
           Table
         </button>
       </div>
-      {view === "list" ? (
+      {isLoading ? (
+        <div>Loading tasks...</div>
+      ) : view === "list" ? (
         <div className="grid grid-cols-1 gap-4">
-          {filteredTasks.map((task: Task) => (
+          {filteredTasks?.map((task: Task) => (
             <TaskCard key={task.id} task={task} />
           ))}
         </div>
       ) : (
-        <div className="z-0 w-full">
-          <DataGrid
-            rows={filteredTasks}
-            columns={columns}
-            checkboxSelection
-            getRowId={(row) => row.id}
-            className={dataGridClassNames}
-            sx={dataGridSxStyles(isDarkMode)}
-          />
-        </div>
+        view === "table" &&
+        filteredTasks && (
+          <div className="z-0 w-full">
+            <DataGrid
+              rows={filteredTasks}
+              columns={columns}
+              checkboxSelection
+              getRowId={(row) => row.id}
+              className={dataGridClassNames}
+              sx={dataGridSxStyles(isDarkMode)}
+            />
+          </div>
+        )
       )}
     </div>
   );

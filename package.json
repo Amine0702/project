@@ -6,12 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.2.0",
     "@clerk/clerk-sdk-node": "^5.1.6",
-    "@clerk/nextjs": "^6.12.0",
+    "@clerk/nextjs": "^6.12.4",
     "@emotion/react": "^11.13.0",
     "@emotion/styled": "^11.13.0",
     "@fullcalendar/daygrid": "^6.1.15",
@@ -20,11 +21,12 @@
     "@fullcalendar/timegrid": "^6.1.15",
     "@mui/material": "^5.16.6",
     "@mui/x-data-grid": "^7.12.0",
+    "@prisma/client": "^6.4.1",
     "@reduxjs/toolkit": "^2.2.7",
     "@stream-io/node-sdk": "^0.1.11",
     "@stream-io/video-react-sdk": "^0.5.1",
     "aws-amplify": "^6.5.1",
-    "axios": "^1.7.3",
+    "axios": "^1.8.1",
     "clx": "^1.0.0",
     "date-fns": "^3.6.0",
     "dotenv": "^16.4.5",
@@ -36,13 +38,15 @@
     "nanoid": "^5.0.6",
     "next": "14.2.5",
     "numeral": "^2.0.6",
+    "prisma": "^6.4.1",
     "react": "^18",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18",
     "react-redux": "^9.1.2",
     "recharts": "^2.12.7",
-    "redux-persist": "^6.0.0"
+    "redux-persist": "^6.0.0",
+    "swr": "^2.3.2"
   },
   "devDependencies": {
     "@types/lodash": "^4.17.7",
@@ -59,6 +63,7 @@
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwind-merge": "^2.4.0",
     "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }

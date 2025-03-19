@@ -1,162 +1,20 @@
-import { EllipsisVertical, MessageSquareMore, Plus } from "lucide-react";
-import React, { useState, useRef, ReactNode } from "react";
+import { EllipsisVertical, MessageSquareMore, Plus, Trash } from "lucide-react";
+import React, { useState, useRef } from "react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { format } from "date-fns";
 import Image from "next/image";
-
-type User = {
-  userId: number;
-  profilePictureUrl: string;
-  username: string;
-};
-
-type Attachment = {
-  fileURL: string;
-  fileName: string;
-};
-
-type Task = {
-  id: number;
-  title: string;
-  status: string;
-  priority: string;
-  startDate: Date;
-  dueDate: Date;
-  comments: string | string[];
-  tags: string;
-  attachments: Attachment[];
-  points: number;
-  description: ReactNode;
-  assignee?: User;
-  author?: User;
-};
+import { useGetTasksQuery, useUpdateTaskStatusMutation,useDeleteTaskMutation } from "@/app/state/api";
+import { Task as TaskType } from "@/app/state/api";
+import ModalNewTask from "@/app/(components)/ModalNewTask"; // Assure-toi d'importer le modal
 
 type BoardProps = {
   id: string;
   setIsModalNewTaskOpen: (isOpen: boolean) => void;
 };
 
-const initialTasks: Task[] = [
-  {
-    id: 1,
-    title: "Tâche 1",
-    status: "To Do",
-    priority: "Urgent",
-    startDate: new Date("2025-08-20"),
-    dueDate: new Date("2025-08-20"),
-    comments: "very good",
-    tags: "Network",
-    attachments: [],
-    points: 0,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p2.jpeg",
-      username: "Bob",
-    },
-  },
-  {
-    id: 2,
-    title: "Tâche 2",
-    status: "Work In Progress",
-    priority: "High",
-    startDate: new Date("2025-08-20"),
-    dueDate: new Date("2025-08-20"),
-    comments: "corrige them",
-    tags: "Deploiment",
-    attachments: [],
-    points: 1,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p3.jpeg",
-      username: "Bob",
-    },
-  },
-  {
-    id: 3,
-    title: "Tâche 3",
-    status: "Under Review",
-    priority: "Medium",
-    startDate: new Date("2025-08-20"),
-    dueDate: new Date("2025-08-20"),
-    comments: "no its very bad",
-    tags: "Network",
-    attachments: [],
-    points: 2,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p4.jpeg",
-      username: "Bob",
-    },
-  },
-  {
-    id: 4,
-    title: "Tâche 4",
-    status: "Completed",
-    priority: "Low",
-    startDate: new Date("2025-08-20"),
-    dueDate: new Date("2025-08-20"),
-    comments: "ok nice",
-    tags: "development",
-    attachments: [],
-    points: 3,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p5.jpeg",
-      username: "Bob",
-    },
-  },
-  {
-    id: 5,
-    title: "Tâche 5",
-    status: "Completed",
-    priority: "Urgent",
-    startDate: new Date("2025-08-20"),
-    dueDate: new Date("2025-08-20"),
-    comments: "lets see it",
-    tags: "Network , Network",
-    attachments: [],
-    points: 4,
-    description: "Task Description",
-    assignee: {
-      userId: 101,
-      profilePictureUrl: "p1.jpeg",
-      username: "Alice",
-    },
-    author: {
-      userId: 201,
-      profilePictureUrl: "p6.jpeg",
-      username: "Bob",
-    },
-  },
-];
-
-const BoardView = ({ id, setIsModalNewTaskOpen }: BoardProps) => {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+const BoardView = ({ id }: BoardProps) => {
+  // Initialisation des statuts avec une valeur par défaut
   const [statuses, setStatuses] = useState<string[]>([
     "To Do",
     "Work In Progress",
@@ -164,13 +22,8 @@ const BoardView = ({ id, setIsModalNewTaskOpen }: BoardProps) => {
     "Completed",
   ]);
 
-  const moveTask = (taskId: number, toStatus: string) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, status: toStatus } : task
-      )
-    );
-  };
+
+  const [isModalNewTaskOpen, setIsModalNewTaskOpen] = useState(false);
 
   const addStatus = () => {
     const newStatus = prompt("Nom du nouveau statut :");
@@ -179,45 +32,91 @@ const BoardView = ({ id, setIsModalNewTaskOpen }: BoardProps) => {
     }
   };
 
-  return (
-    <DndProvider backend={HTML5Backend}>
-      {/* On enveloppe le Board dans un conteneur flex-col avec une hauteur définie */}
-      <div className="flex flex-col h-full w-full">
-        {/* Zone scrollable horizontal qui prend tout l'espace restant */}
-        <div className="flex-1 flex items-start gap-4 p-4 overflow-x-auto">
-          {statuses.map((status) => (
-            <TaskColumn
-              key={status}
-              status={status}
-              tasks={tasks.filter((task) => task.status === status)}
-              moveTask={moveTask}
-              setIsModalNewTaskOpen={setIsModalNewTaskOpen}
-            />
-          ))}
+  // Fonction pour supprimer un statut (colonne)
+  const deleteStatus = (statusToDelete: string) => {
+    if (confirm(`Voulez-vous supprimer le statut "${statusToDelete}" ?`)) {
+      setStatuses(statuses.filter((status) => status !== statusToDelete));
+    }
+  };
 
-          {/* Colonne pour ajouter un nouveau statut */}
-          <div className="min-w-[50px] flex-shrink-0">
-            <div className="rounded-lg bg-white dark:bg-dark-secondary shadow p-2 h-full flex items-center justify-center">
-              <button
-                onClick={addStatus}
-                className="flex items-center justify-center rounded bg-blue-500 p-2 text-white hover:bg-blue-600"
-              >
-                <Plus size={16} />
-              </button>
+  const {
+    data: tasks,
+    isLoading,
+    error,
+  } = useGetTasksQuery({ projectId: Number(id) });
+  const [updateTaskStatus] = useUpdateTaskStatusMutation();
+
+  const moveTask = (taskId: number, toStatus: string) => {
+    updateTaskStatus({ taskId, status: toStatus });
+  };
+
+  // Fonction de réordonnancement des colonnes
+  const moveColumn = (draggedStatus: string, hoveredStatus: string) => {
+    const draggedIndex = statuses.indexOf(draggedStatus);
+    const hoveredIndex = statuses.indexOf(hoveredStatus);
+    if (draggedIndex < 0 || hoveredIndex < 0 || draggedIndex === hoveredIndex) return;
+    const updatedStatuses = [...statuses];
+    updatedStatuses.splice(draggedIndex, 1);
+    updatedStatuses.splice(hoveredIndex, 0, draggedStatus);
+    setStatuses(updatedStatuses);
+  };
+  
+  
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>An error occurred while fetching tasks</div>;
+
+  return (
+    <>
+      <DndProvider backend={HTML5Backend}>
+        <div className="flex flex-col h-full w-full">
+          <div className="flex-1 flex items-start gap-4 p-4 overflow-x-auto">
+            {statuses.map((status) => (
+              <DraggableColumn
+                key={status}
+                status={status}
+                tasks={tasks || []}
+                moveTask={moveTask}
+                setIsModalNewTaskOpen={setIsModalNewTaskOpen}
+                deleteStatus={deleteStatus}
+                moveColumn={moveColumn} deleteTask={function (taskId: number): void {
+                  throw new Error("Function not implemented.");
+                } }              />
+            ))}
+            <div className="min-w-[50px] flex-shrink-0">
+              <div className="rounded-lg bg-white dark:bg-dark-secondary shadow p-2 h-full flex items-center justify-center">
+                <button
+                  onClick={addStatus}
+                  className="flex items-center justify-center rounded bg-blue-500 p-2 text-white hover:bg-blue-600"
+                >
+                  <Plus size={16} /> Add status
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </DndProvider>
+      </DndProvider>
+      
+      {/* Modal pour créer une nouvelle tâche */}
+      {isModalNewTaskOpen && (
+        <ModalNewTask
+          isOpen={isModalNewTaskOpen}
+          onClose={() => setIsModalNewTaskOpen(false)}
+          statuses={statuses} // On transmet les statuts du projet
+          id={id} // id du projet
+        />
+      )}
+    </>
   );
 };
 
-
 type TaskColumnProps = {
   status: string;
-  tasks: Task[];
+  tasks: TaskType[];
   moveTask: (taskId: number, toStatus: string) => void;
   setIsModalNewTaskOpen: (isOpen: boolean) => void;
+  deleteTask: (taskId: number) => void; // Fonction deleteTask existante
+  deleteStatus: (status: string) => void; // Fonction pour supprimer le statut (colonne)
 };
 
 const TaskColumn = ({
@@ -225,20 +124,20 @@ const TaskColumn = ({
   tasks,
   moveTask,
   setIsModalNewTaskOpen,
+  deleteTask,
+  deleteStatus,
 }: TaskColumnProps) => {
-  const ref = useRef<HTMLDivElement>(null);
-
   const [{ isOver }, drop] = useDrop(() => ({
     accept: "task",
     drop: (item: { id: number }) => moveTask(item.id, status),
-    collect: (monitor) => ({
+    collect: (monitor: any) => ({
       isOver: !!monitor.isOver(),
     }),
   }));
 
-  const tasksCount = tasks.length;
+  const tasksCount = tasks.filter((task) => task.status === status).length;
 
-  const statusColor: { [key: string]: string } = {
+  const statusColor: any = {
     "To Do": "#2563EB",
     "Work In Progress": "#059669",
     "Under Review": "#D97706",
@@ -254,14 +153,13 @@ const TaskColumn = ({
         isOver ? "bg-blue-50 dark:bg-neutral-800" : ""
       }`}
     >
-      {/* En-tête de la colonne */}
       <div className="mb-4 flex items-center">
         <div
-          className="w-2 h-6 rounded mr-3"
+          className={`w-2 !bg-[${statusColor[status]}] rounded-s-lg`}
           style={{ backgroundColor: statusColor[status] || "#cccccc" }}
         />
         <div className="flex-1 flex items-center justify-between">
-          <h3 className="text-lg font-semibold dark:text-white">{status}</h3>
+          <h3 className="text-lg font-semibold dark:text-white">{status} </h3>
           <span className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs dark:bg-dark-tertiary dark:text-white">
             {tasksCount}
           </span>
@@ -275,36 +173,40 @@ const TaskColumn = ({
             >
               <Plus size={14} />
             </button>
+            <button
+              className="text-gray-600 hover:text-red-800"
+              onClick={() => deleteStatus(status)}
+            >
+              <Trash size={20} />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Liste des tâches */}
-      <div className="flex flex-col gap-4">
-        {tasks.map((task) => (
-          <TaskComponent key={task.id} task={task} />
+      {tasks
+        .filter((task) => task.status === status)
+        .map((task) => (
+          <Task key={task.id} task={task} deleteTask={deleteTask} />
         ))}
-      </div>
     </div>
   );
 };
 
 type TaskProps = {
-  task: Task;
+  task: TaskType;
+  deleteTask: (taskId: number) => void;
 };
 
-const TaskComponent = ({ task }: TaskProps) => {
+const Task = ({ task, deleteTask }: TaskProps) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: "task",
     item: { id: task.id },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
+    collect: (monitor: any) => ({
+      isDragging: !!monitor.isDragging(),
     }),
   }));
 
-  const taskTagsSplit = task.tags
-    ? task.tags.split(",").map((tag) => tag.trim()).filter(Boolean)
-    : [];
+  const taskTagsSplit = task.tags ? task.tags.split(",") : [];
 
   const formattedStartDate = task.startDate
     ? format(new Date(task.startDate), "P")
@@ -315,7 +217,7 @@ const TaskComponent = ({ task }: TaskProps) => {
 
   const numberOfComments = (task.comments && task.comments.length) || 0;
 
-  const PriorityTag = ({ priority }: { priority: Task["priority"] }) => (
+  const PriorityTag = ({ priority }: { priority: TaskType["priority"] }) => (
     <div
       className={`rounded-full px-2 py-1 text-xs font-semibold ${
         priority === "Urgent"
@@ -333,6 +235,10 @@ const TaskComponent = ({ task }: TaskProps) => {
     </div>
   );
 
+  const handleDelete = () => {
+    deleteTask(task.id);
+  };
+
   return (
     <div
       ref={(instance) => {
@@ -342,38 +248,35 @@ const TaskComponent = ({ task }: TaskProps) => {
         isDragging ? "opacity-50" : "opacity-100"
       }`}
     >
-      {/* Image de la tâche (s'il y en a) */}
       {task.attachments && task.attachments.length > 0 && (
-        <div className="mb-3">
-          <Image
-            src={task.attachments[0].fileURL}
-            alt={task.attachments[0].fileName}
-            width={400}
-            height={200}
-            className="w-full h-auto rounded"
-          />
-        </div>
+        <Image
+          src={`/${task.attachments[0].fileURL}`}
+          alt={task.attachments[0].fileName}
+          width={400}
+          height={200}
+          className="h-auto w-full rounded-t-md"
+        />
       )}
 
-      {/* Labels en haut (priorité, tags, etc.) */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex flex-wrap items-center gap-2">
           {task.priority && <PriorityTag priority={task.priority} />}
           {taskTagsSplit.map((tag) => (
-            <div
-              key={tag}
-              className="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-700"
-            >
+            <div key={tag} className="rounded-full bg-blue-100 px-2 py-1 text-xs">
               {tag}
             </div>
           ))}
         </div>
-        <button className="text-gray-400 hover:text-gray-600 dark:text-neutral-500">
-          <EllipsisVertical size={20} />
-        </button>
+        <div className="flex gap-1">
+        <button className="text-gray-600 hover:text-red-800" onClick={() => deleteTask(task.id)}>
+        <Trash size={20} />
+      </button>
+          <button className="text-gray-400 hover:text-gray-600 dark:text-neutral-500">
+            <EllipsisVertical size={20} />
+          </button>
+        </div>
       </div>
 
-      {/* Titre et points */}
       <div className="flex items-center justify-between mb-1">
         <h4 className="text-md font-bold dark:text-white">{task.title}</h4>
         {typeof task.points === "number" && (
@@ -383,53 +286,106 @@ const TaskComponent = ({ task }: TaskProps) => {
         )}
       </div>
 
-      {/* Dates */}
       <div className="text-xs text-gray-500 dark:text-neutral-400 mb-2">
         {formattedStartDate && <span>{formattedStartDate} - </span>}
         {formattedDueDate && <span>{formattedDueDate}</span>}
       </div>
 
-      {/* Description */}
       <p className="text-sm text-gray-600 dark:text-neutral-300 mb-3">
         {task.description}
       </p>
 
       <hr className="mb-3 border-gray-200 dark:border-stroke-dark" />
 
-      {/* Assignee & Comments */}
       <div className="flex items-center justify-between">
-        {/* Avatars */}
         <div className="flex -space-x-2">
           {task.assignee && (
             <Image
               key={task.assignee.userId}
-              src={`/${task.assignee.profilePictureUrl}`}
+              src={`/${task.assignee.profilePictureUrl!}`}
               alt={task.assignee.username}
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-full border-2 border-white dark:border-dark-secondary object-cover"
+              width={30}
+              height={30}
+              className="h-8 w-8 rounded-full border-2 border-white object-cover dark:border-dark-secondary"
             />
           )}
           {task.author && (
             <Image
               key={task.author.userId}
-              src={`/${task.author.profilePictureUrl}`}
+              src={`/${task.author.profilePictureUrl!}`}
               alt={task.author.username}
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-full border-2 border-white dark:border-dark-secondary object-cover"
+              width={30}
+              height={30}
+              className="h-8 w-8 rounded-full border-2 border-white object-cover dark:border-dark-secondary"
             />
           )}
         </div>
 
-        {/* Nombre de commentaires */}
         <div className="flex items-center text-gray-500 dark:text-neutral-400">
           <MessageSquareMore size={18} />
-          <span className="ml-1 text-sm">
-            {numberOfComments}
-          </span>
+          <span className="ml-1 text-sm">{numberOfComments}</span>
         </div>
       </div>
+    </div>
+  );
+};
+
+type DraggableColumnProps = TaskColumnProps & {
+  moveColumn: (draggedStatus: string, hoveredStatus: string) => void;
+};
+
+const DraggableColumn = ({
+  status,
+  tasks,
+  moveTask,
+  setIsModalNewTaskOpen,
+
+  deleteStatus,
+  moveColumn,
+}: DraggableColumnProps) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: "COLUMN",
+    item: { status },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  }));
+
+  const [, drop] = useDrop({
+    accept: "COLUMN",
+    hover(item: { status: string }) {
+      if (!ref.current) return;
+      if (item.status !== status) {
+        moveColumn(item.status, status);
+      }
+    },
+  });
+  const [deleteTask] = useDeleteTaskMutation();
+
+  const handleDeleteTask = async (taskId: number) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer cette tâche ?")) {
+      try {
+        await deleteTask(taskId);
+      } catch (error) {
+        console.error("Erreur lors de la suppression de la tâche :", error);
+      }
+    }
+  };
+
+  drag(drop(ref));
+
+  return (
+    <div ref={ref} style={{ opacity: isDragging ? 0.5 : 1 }}>
+      <TaskColumn
+  status={status}
+  tasks={tasks}
+  moveTask={moveTask}
+  setIsModalNewTaskOpen={setIsModalNewTaskOpen}
+  deleteTask={handleDeleteTask } // Passer la fonction ici
+  deleteStatus={deleteStatus}
+/>
     </div>
   );
 };

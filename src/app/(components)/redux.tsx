@@ -7,7 +7,7 @@ import {
   useSelector,
   Provider,
 } from "react-redux";
-import globalReducer from "@/app/state";
+import globalReducer from "@/app/state"; // Votre reducer global existant
 import { api } from "@/app/state/api";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import {
@@ -46,7 +46,7 @@ const storage =
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["global"],
+  whitelist: ["global", "auth"], // On peut persister global et auth si besoin
 };
 
 const rootReducer = combineReducers({
@@ -76,9 +76,12 @@ export const useAppDispatch = () => useDispatch<AppDispatch>();
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 
 /* PROVIDER */
-export default function StoreProvider({children,}: {children: React.ReactNode;}) 
-{
-  const storeRef = useRef<AppStore | null>(null); 
+export default function StoreProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const storeRef = useRef<AppStore | null>(null);
 
   if (!storeRef.current) {
     storeRef.current = makeStore();

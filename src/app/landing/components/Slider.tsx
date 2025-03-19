@@ -1,4 +1,5 @@
-import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs';
+import Link from "next/link";
+
 const Slider = () => (
   <div>
     <div className="shap_big_2 d-none d-lg-block">
@@ -27,16 +28,11 @@ const Slider = () => (
 
                   
 
-                  {/* Pour les utilisateurs non authentifiés :
-                      - Ouvre la modale de connexion Clerk
-                      - Redirige vers /kanban après connexion */}
-                  <SignedOut>
-                    <SignInButton mode="modal" fallbackRedirectUrl="/home">
-                      <button className="boxed-btn3">
-                        Inscrivez-vous, c'est gratuit !
-                      </button>
-                    </SignInButton>
-                  </SignedOut>
+                  
+                      <Link href="/(admin)/vue" className="boxed-btn3">
+                        <i className="fa fa-phone"></i> Inscrivez-vous, c'est gratuit !
+                      </Link>
+               
                 </div>
                 <div className="ilstrator_thumb">
                   <video

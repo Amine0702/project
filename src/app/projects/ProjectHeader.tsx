@@ -1,6 +1,5 @@
 "use client"
 
-import Header from "@/app/(components)/Header";
 import { Clock, Filter, Grid3x3, List, PlusSquare, Share2, Table } from 'lucide-react';
 import React, { useState } from "react";
 import ModalNewProject from "@/app/projects/ModalNewProject";
@@ -13,17 +12,15 @@ type Props = {
 const ProjectHeader = ({ activeTab, setActiveTab }: Props) => {
   const [isModalNewProjectOpen, setIsModalNewProjectOpen] = useState(false);
 
-  
-
   return (
     <div className="px-4 xl:px-6">
-      {/*Model new project*/}
+      {/* Modal de création de projet */}
       <ModalNewProject
         isOpen={isModalNewProjectOpen}
         onClose={() => setIsModalNewProjectOpen(false)}
       />
 
-      {/* TABS */}
+      {/* Onglets */}
       <div className="flex flex-wrap-reverse gap-2 border-y border-gray-200 pb-[8px] pt-2 dark:border-stroke-dark md:items-center">
         <div className="flex flex-1 items-center gap-2 md:gap-4">
           <TabButton
@@ -66,20 +63,16 @@ const ProjectHeader = ({ activeTab, setActiveTab }: Props) => {
             />
             <Grid3x3 className="absolute left-3 top-2 h-4 w-4 text-gray-400 dark:text-neutral-500" />
           </div>
-          
           <button
-              className="flex items-center rounded-md bg-blue-primary px-3 py-2 text-white hover:bg-blue-600"
-              onClick={() => setIsModalNewProjectOpen(true)}
-            >
-              <PlusSquare className="mr-2 h-5 w-5" /> New Project
-            </button>
+            className="flex items-center rounded-md bg-blue-primary px-3 py-2 text-white hover:bg-blue-600"
+            onClick={() => setIsModalNewProjectOpen(true)}
+          >
+            <PlusSquare className="mr-2 h-5 w-5" /> New Project
+          </button>
         </div>
       </div>
-
-
     </div>
-
-  )
+  );
 };
 
 type TabButtonProps = {
@@ -91,7 +84,6 @@ type TabButtonProps = {
 
 const TabButton = ({ name, icon, setActiveTab, activeTab }: TabButtonProps) => {
   const isActive = activeTab === name;
-
   return (
     <button
       className={`relative flex items-center gap-2 px-1 py-2 text-gray-500 after:absolute after:-bottom-[9px] after:left-0 after:h-[1px] after:w-full hover:text-blue-600 dark:text-neutral-500 dark:hover:text-white sm:px-2 lg:px-4 ${

@@ -15,12 +15,12 @@ const ConditionalDashboardWrapper: React.FC<ConditionalDashboardWrapperProps> = 
     setMounted(true);
   }, []);
 
-  // Tant que le composant n'est pas monté, on renvoie directement les enfants
   if (!mounted) {
     return <>{children}</>;
   }
 
-  const isLandingPage = pathname === "/" || pathname === "/landing"; // Ajuste en fonction de tes routes
+  const landingPages = ["/", "/landing"];
+  const isLandingPage = landingPages.includes(pathname);
 
   if (isLandingPage) {
     return <>{children}</>;
