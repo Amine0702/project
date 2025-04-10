@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import axios from "axios"; // Utilisation d'Axios pour l'appel API
+
 import ProjectHeader from "../ProjectHeader";
 import Board from "../BoardView";
 import List from "../ListView";
@@ -27,7 +29,8 @@ const Project = ({ params }: Props) => {
   // Dès que Clerk a chargé et s'il n'y a pas d'utilisateur, rediriger vers la page de connexion.
   useEffect(() => {
     if (isLoaded && !user) {
-      router.push(`/sign-in?redirect_url=${encodeURIComponent(window.location.href)}`);
+      const redirectUrl = typeof window !== "undefined" ? encodeURIComponent(window.location.href) : "";
+      router.push(`/sign-in?redirect_url=${redirectUrl}`);
     }
   }, [isLoaded, user, router]);
 
@@ -38,6 +41,24 @@ const Project = ({ params }: Props) => {
 
   // Vérifier que l'email de l'utilisateur correspond à celui de l'invitation
   const userEmail = user.emailAddresses?.[0]?.emailAddress;
+
+  // Mettre à jour le clerkUserId dans la base de données si l'email correspond
+  useEffect(() => {
+    if (invitedEmail && userEmail === invitedEmail) {
+      axios
+        .post(`http://127.0.0.1:8000/api/project-teams/update-clerk`, {
+          email: invitedEmail,
+          clerkUserId: user.id, // Le Clerk User ID
+        })
+        .then((response) => {
+          console.log("Clerk UserId mis à jour", response.data);
+        })
+        .catch((error) => {
+          console.error("Erreur lors de la mise à jour du Clerk UserId", error);
+        });
+    }
+  }, [invitedEmail, userEmail, user]);
+
   if (invitedEmail && userEmail !== invitedEmail) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">

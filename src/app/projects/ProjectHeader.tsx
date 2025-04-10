@@ -64,11 +64,11 @@ const ProjectHeader = ({ activeTab, setActiveTab }: Props) => {
             <Grid3x3 className="absolute left-3 top-2 h-4 w-4 text-gray-400 dark:text-neutral-500" />
           </div>
           <button
-            className="flex items-center rounded-md bg-blue-primary px-3 py-2 text-white hover:bg-blue-600"
-            onClick={() => setIsModalNewProjectOpen(true)}
-          >
-            <PlusSquare className="mr-2 h-5 w-5" /> New Project
-          </button>
+                      className="flex items-center rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 px-5 py-3 text-white shadow-2xl transition transform hover:scale-105"
+                      onClick={() => setIsModalNewProjectOpen(true)}
+                    >
+                      <PlusSquare className="mr-2 h-6 w-6" /> New Project
+                    </button>
         </div>
       </div>
     </div>

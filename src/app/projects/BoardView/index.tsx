@@ -1,30 +1,46 @@
-import { EllipsisVertical, MessageSquareMore, Plus, Trash } from "lucide-react";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { format } from "date-fns";
 import Image from "next/image";
-import { useGetTasksQuery, useUpdateTaskStatusMutation,useDeleteTaskMutation } from "@/app/state/api";
+import {
+  EllipsisVertical,
+  MessageSquareMore,
+  Plus,
+  Trash,
+} from "lucide-react";
+import ModalNewTask from "@/app/(components)/ModalNewTask";
+import TaskDetailModal from "@/app/projects/TaskDetailModal";
+import {
+  useGetTasksQuery,
+  useUpdateTaskStatusMutation,
+  useDeleteTaskMutation,
+} from "@/app/state/api";
 import { Task as TaskType } from "@/app/state/api";
-import ModalNewTask from "@/app/(components)/ModalNewTask"; // Assure-toi d'importer le modal
 
 type BoardProps = {
   id: string;
-  setIsModalNewTaskOpen: (isOpen: boolean) => void;
 };
 
 const BoardView = ({ id }: BoardProps) => {
-  // Initialisation des statuts avec une valeur par défaut
-  const [statuses, setStatuses] = useState<string[]>([
-    "To Do",
-    "Work In Progress",
-    "Under Review",
-    "Completed",
-  ]);
-
-
+  // Utilisation d'une clé unique basée sur l'ID du projet
+  const localStorageKey = `statuses-${id}`;
+  // Récupération des statuts depuis localStorage ou valeur par défaut
+  const [statuses, setStatuses] = useState<string[]>(() => {
+    const storedStatuses = localStorage.getItem(localStorageKey);
+    return storedStatuses
+      ? JSON.parse(storedStatuses)
+      : ["To Do", "Work In Progress", "Under Review", "Completed"];
+  });
   const [isModalNewTaskOpen, setIsModalNewTaskOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<TaskType | null>(null);
 
+  useEffect(() => {
+    // Sauvegarder les statuts dans localStorage pour ce projet uniquement
+    localStorage.setItem(localStorageKey, JSON.stringify(statuses));
+  }, [statuses, localStorageKey]);
+
+  // Ajout d'un nouveau statut (colonne)
   const addStatus = () => {
     const newStatus = prompt("Nom du nouveau statut :");
     if (newStatus && !statuses.includes(newStatus)) {
@@ -32,39 +48,45 @@ const BoardView = ({ id }: BoardProps) => {
     }
   };
 
-  // Fonction pour supprimer un statut (colonne)
+  // Suppression d'un statut (colonne)
   const deleteStatus = (statusToDelete: string) => {
     if (confirm(`Voulez-vous supprimer le statut "${statusToDelete}" ?`)) {
       setStatuses(statuses.filter((status) => status !== statusToDelete));
     }
   };
 
-  const {
-    data: tasks,
-    isLoading,
-    error,
-  } = useGetTasksQuery({ projectId: Number(id) });
+  const { data: tasks, isLoading, error } = useGetTasksQuery({
+    projectId: Number(id),
+  });
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
 
+  // Déplacement d'une tâche d'une colonne à l'autre
   const moveTask = (taskId: number, toStatus: string) => {
     updateTaskStatus({ taskId, status: toStatus });
   };
 
-  // Fonction de réordonnancement des colonnes
+  // Réordonnancement des colonnes
   const moveColumn = (draggedStatus: string, hoveredStatus: string) => {
     const draggedIndex = statuses.indexOf(draggedStatus);
     const hoveredIndex = statuses.indexOf(hoveredStatus);
-    if (draggedIndex < 0 || hoveredIndex < 0 || draggedIndex === hoveredIndex) return;
+    if (draggedIndex < 0 || hoveredIndex < 0 || draggedIndex === hoveredIndex)
+      return;
     const updatedStatuses = [...statuses];
     updatedStatuses.splice(draggedIndex, 1);
     updatedStatuses.splice(hoveredIndex, 0, draggedStatus);
     setStatuses(updatedStatuses);
   };
-  
-  
 
   if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>An error occurred while fetching tasks</div>;
+  if (error)
+    return (
+      <div>Une erreur est survenue lors du chargement des tâches</div>
+    );
+
+  // Fonction appelée lors du clic sur une tâche pour ouvrir la modale de détails
+  const handleSelectTask = (task: TaskType) => {
+    setSelectedTask(task);
+  };
 
   return (
     <>
@@ -79,9 +101,9 @@ const BoardView = ({ id }: BoardProps) => {
                 moveTask={moveTask}
                 setIsModalNewTaskOpen={setIsModalNewTaskOpen}
                 deleteStatus={deleteStatus}
-                moveColumn={moveColumn} deleteTask={function (taskId: number): void {
-                  throw new Error("Function not implemented.");
-                } }              />
+                moveColumn={moveColumn}
+                onSelectTask={handleSelectTask} // Passage de la fonction ici
+              />
             ))}
             <div className="min-w-[50px] flex-shrink-0">
               <div className="rounded-lg bg-white dark:bg-dark-secondary shadow p-2 h-full flex items-center justify-center">
@@ -89,34 +111,47 @@ const BoardView = ({ id }: BoardProps) => {
                   onClick={addStatus}
                   className="flex items-center justify-center rounded bg-blue-500 p-2 text-white hover:bg-blue-600"
                 >
-                  <Plus size={16} /> Add status
+                  <Plus size={16} /> Ajouter statut
                 </button>
               </div>
             </div>
           </div>
         </div>
       </DndProvider>
-      
-      {/* Modal pour créer une nouvelle tâche */}
+
       {isModalNewTaskOpen && (
         <ModalNewTask
           isOpen={isModalNewTaskOpen}
           onClose={() => setIsModalNewTaskOpen(false)}
-          statuses={statuses} // On transmet les statuts du projet
-          id={id} // id du projet
+          statuses={statuses}
+          id={id}
+        />
+      )}
+
+      {selectedTask && (
+        <TaskDetailModal 
+          task={selectedTask} 
+          onClose={() => setSelectedTask(null)} 
         />
       )}
     </>
   );
 };
 
+export default BoardView;
+
+//
+// ----------- Composants internes -----------
+//
+
 type TaskColumnProps = {
   status: string;
   tasks: TaskType[];
   moveTask: (taskId: number, toStatus: string) => void;
   setIsModalNewTaskOpen: (isOpen: boolean) => void;
-  deleteTask: (taskId: number) => void; // Fonction deleteTask existante
-  deleteStatus: (status: string) => void; // Fonction pour supprimer le statut (colonne)
+  deleteStatus: (status: string) => void;
+  deleteTask: (taskId: number) => void;
+  onSelectTask: (task: TaskType) => void;
 };
 
 const TaskColumn = ({
@@ -124,42 +159,47 @@ const TaskColumn = ({
   tasks,
   moveTask,
   setIsModalNewTaskOpen,
-  deleteTask,
   deleteStatus,
+  deleteTask,
+  onSelectTask,
 }: TaskColumnProps) => {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: "task",
     drop: (item: { id: number }) => moveTask(item.id, status),
-    collect: (monitor: any) => ({
+    collect: (monitor) => ({
       isOver: !!monitor.isOver(),
     }),
   }));
 
   const tasksCount = tasks.filter((task) => task.status === status).length;
-
-  const statusColor: any = {
-    "To Do": "#2563EB",
-    "Work In Progress": "#059669",
-    "Under Review": "#D97706",
-    Completed: "#000000",
+  const normalizedStatus = status.toLowerCase();
+  const statusColor: Record<string, string> = {
+    "to do": "#2563EB",
+    "work in progress": "#059669",
+    "under review": "#D97706",
+    "completed": "#000000",
   };
 
   return (
     <div
-      ref={(instance) => {
-        drop(instance);
-      }}
+    ref={(instance) => {
+      drop(instance);
+    }}
       className={`min-w-[350px] flex-shrink-0 rounded-lg bg-white dark:bg-dark-secondary shadow p-3 transition-colors ${
         isOver ? "bg-blue-50 dark:bg-neutral-800" : ""
       }`}
     >
       <div className="mb-4 flex items-center">
         <div
-          className={`w-2 !bg-[${statusColor[status]}] rounded-s-lg`}
-          style={{ backgroundColor: statusColor[status] || "#cccccc" }}
+          className="w-2 rounded-s-lg"
+          style={{
+            backgroundColor: statusColor[normalizedStatus] ?? "#cccccc",
+          }}
         />
         <div className="flex-1 flex items-center justify-between">
-          <h3 className="text-lg font-semibold dark:text-white">{status} </h3>
+          <h3 className="text-lg font-semibold dark:text-white">
+            {status}
+          </h3>
           <span className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs dark:bg-dark-tertiary dark:text-white">
             {tasksCount}
           </span>
@@ -186,7 +226,12 @@ const TaskColumn = ({
       {tasks
         .filter((task) => task.status === status)
         .map((task) => (
-          <Task key={task.id} task={task} deleteTask={deleteTask} />
+          <Task 
+            key={task.id} 
+            task={task} 
+            deleteTask={deleteTask} 
+            onSelect={onSelectTask} 
+          />
         ))}
     </div>
   );
@@ -195,29 +240,32 @@ const TaskColumn = ({
 type TaskProps = {
   task: TaskType;
   deleteTask: (taskId: number) => void;
+  onSelect: (task: TaskType) => void;
 };
 
-const Task = ({ task, deleteTask }: TaskProps) => {
+const Task = ({ task, deleteTask, onSelect }: TaskProps) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: "task",
     item: { id: task.id },
-    collect: (monitor: any) => ({
+    collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
   }));
 
   const taskTagsSplit = task.tags ? task.tags.split(",") : [];
-
   const formattedStartDate = task.startDate
     ? format(new Date(task.startDate), "P")
     : "";
   const formattedDueDate = task.dueDate
     ? format(new Date(task.dueDate), "P")
     : "";
-
   const numberOfComments = (task.comments && task.comments.length) || 0;
 
-  const PriorityTag = ({ priority }: { priority: TaskType["priority"] }) => (
+  const PriorityTag = ({
+    priority,
+  }: {
+    priority: TaskType["priority"];
+  }) => (
     <div
       className={`rounded-full px-2 py-1 text-xs font-semibold ${
         priority === "Urgent"
@@ -235,18 +283,16 @@ const Task = ({ task, deleteTask }: TaskProps) => {
     </div>
   );
 
-  const handleDelete = () => {
-    deleteTask(task.id);
-  };
-
   return (
     <div
-      ref={(instance) => {
-        drag(instance);
-      }}
+    ref={(instance) => {
+      drag(instance);
+    }}
       className={`rounded-md bg-white dark:bg-dark-secondary shadow p-4 transition-opacity ${
         isDragging ? "opacity-50" : "opacity-100"
       }`}
+      onClick={() => onSelect(task)}
+      style={{ cursor: "pointer" }}
     >
       {task.attachments && task.attachments.length > 0 && (
         <Image
@@ -268,9 +314,12 @@ const Task = ({ task, deleteTask }: TaskProps) => {
           ))}
         </div>
         <div className="flex gap-1">
-        <button className="text-gray-600 hover:text-red-800" onClick={() => deleteTask(task.id)}>
-        <Trash size={20} />
-      </button>
+          <button
+            className="text-gray-600 hover:text-red-800"
+            onClick={() => deleteTask(task.id)}
+          >
+            <Trash size={20} />
+          </button>
           <button className="text-gray-400 hover:text-gray-600 dark:text-neutral-500">
             <EllipsisVertical size={20} />
           </button>
@@ -330,8 +379,9 @@ const Task = ({ task, deleteTask }: TaskProps) => {
   );
 };
 
-type DraggableColumnProps = TaskColumnProps & {
+type DraggableColumnProps = Omit<TaskColumnProps, "deleteTask"> & {
   moveColumn: (draggedStatus: string, hoveredStatus: string) => void;
+  onSelectTask: (task: TaskType) => void;
 };
 
 const DraggableColumn = ({
@@ -339,12 +389,11 @@ const DraggableColumn = ({
   tasks,
   moveTask,
   setIsModalNewTaskOpen,
-
   deleteStatus,
   moveColumn,
+  onSelectTask,
 }: DraggableColumnProps) => {
   const ref = useRef<HTMLDivElement>(null);
-
   const [{ isDragging }, drag] = useDrag(() => ({
     type: "COLUMN",
     item: { status },
@@ -362,12 +411,13 @@ const DraggableColumn = ({
       }
     },
   });
-  const [deleteTask] = useDeleteTaskMutation();
 
+  // Mutation pour supprimer une tâche
+  const [deleteTaskMutation] = useDeleteTaskMutation();
   const handleDeleteTask = async (taskId: number) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer cette tâche ?")) {
       try {
-        await deleteTask(taskId);
+        await deleteTaskMutation(taskId);
       } catch (error) {
         console.error("Erreur lors de la suppression de la tâche :", error);
       }
@@ -379,15 +429,14 @@ const DraggableColumn = ({
   return (
     <div ref={ref} style={{ opacity: isDragging ? 0.5 : 1 }}>
       <TaskColumn
-  status={status}
-  tasks={tasks}
-  moveTask={moveTask}
-  setIsModalNewTaskOpen={setIsModalNewTaskOpen}
-  deleteTask={handleDeleteTask } // Passer la fonction ici
-  deleteStatus={deleteStatus}
-/>
+        status={status}
+        tasks={tasks}
+        moveTask={moveTask}
+        setIsModalNewTaskOpen={setIsModalNewTaskOpen}
+        deleteStatus={deleteStatus}
+        deleteTask={handleDeleteTask}
+        onSelectTask={onSelectTask}
+      />
     </div>
   );
 };
-
-export default BoardView;

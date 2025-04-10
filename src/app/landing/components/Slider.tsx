@@ -1,3 +1,4 @@
+import { SignedIn, SignedOut } from "@clerk/nextjs";
 import Link from "next/link";
 
 const Slider = () => (
@@ -25,15 +26,18 @@ const Slider = () => (
                   <p>
                     Centralisez tout votre contenu, même dans une équipe distribuée.
                   </p>
-
-                  
-
-                  
-                      <Link href="/(admin)/vue" className="boxed-btn3">
-                        <i className="fa fa-phone"></i> Inscrivez-vous, c'est gratuit !
-                      </Link>
                
                 </div>
+                <SignedOut>
+                  <Link href="/sign-in" className="boxed-btn3">
+                    <i className="fa fa-phone"></i> Inscrivez-vous, c'est gratuit !
+                  </Link>
+                </SignedOut>
+                <SignedIn>
+                  <Link href="/home" className="boxed-btn3">
+                    <i className="fa fa-phone"></i> Accedée a vos tableaux
+                  </Link>
+                </SignedIn>
                 <div className="ilstrator_thumb">
                   <video
                     width="100%"

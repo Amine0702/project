@@ -18,14 +18,22 @@ export enum Priority {
   Backlog = "Backlog",
 }
 
-
 export interface User {
   userId?: number;
+  clerkUserId?: string; // Ajoute cette propriété
   username: string;
   email: string;
   profilePictureUrl?: string;
   cognitoId?: string;
   teamId?: number;
+  role?: string; // Propriété role
+}
+
+
+
+export interface CreateUserResponse {
+  message: string;
+  user: User;
 }
 
 export interface Attachment {
@@ -49,7 +57,6 @@ export interface Task {
   projectId: number;
   authorUserId?: number;
   assignedUserId?: number;
-
   author?: User;
   assignee?: User;
   comments?: Comment[];
@@ -69,21 +76,25 @@ export interface Team {
   projectManagerUserId?: number;
 }
 
+export interface UserProjects {
+  managerProjects: Project[];
+  invitedProjects: Project[];
+}
+
 export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: "http://127.0.0.1:8000/api",
     headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      "Content-Type": "application/json",
+      Accept: "application/json",
     },
-    
   }),
   reducerPath: "api",
   tagTypes: ["Projects", "Tasks", "Users", "Teams"],
   endpoints: (build) => ({
-    createUser: build.mutation<User, Partial<User>>({
+    createUser: build.mutation<CreateUserResponse, Partial<User>>({
       query: (user) => ({
-        url: "users", // Doit correspondre à ta route Laravel POST /users
+        url: "users", // Correspond à ta route POST /users
         method: "POST",
         body: user,
       }),
@@ -95,6 +106,10 @@ export const api = createApi({
     }),
     getProjects: build.query<Project[], void>({
       query: () => "projects",
+      providesTags: ["Projects"],
+    }),
+    getUserProjectsByClerkUser: build.query<UserProjects, string>({
+      query: (clerkUserId) => `user-projects/${clerkUserId}`,
       providesTags: ["Projects"],
     }),
     createProject: build.mutation<Project, Partial<Project>>({
@@ -112,7 +127,6 @@ export const api = createApi({
           ? result.map(({ id }) => ({ type: "Tasks" as const, id }))
           : [{ type: "Tasks" as const }],
     }),
-    
     getTasksByUser: build.query<Task[], number>({
       query: (userId) => `tasks/user/${userId}`,
       providesTags: (result, error, userId) =>
@@ -156,13 +170,12 @@ export const api = createApi({
       }),
       invalidatesTags: ["Tasks"],
     }),
-    
   }),
 });
 
 export const {
-  
   useGetProjectsQuery,
+  useGetUserProjectsByClerkUserQuery,
   useCreateProjectMutation,
   useGetTasksQuery,
   useCreateTaskMutation,

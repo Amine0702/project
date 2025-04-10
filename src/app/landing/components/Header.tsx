@@ -1,5 +1,6 @@
 "use client";
 
+import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -42,9 +43,15 @@ const Header = () => {
                 <div className="Appointment">
                   <div className="d-flex align-items-center" style={{ gap: '1rem' }}>
                       {/* Show link to home page if logged in */}
-                      <Link href="/sign-in" className="boxed-btn3">
-                        <i className="fa fa-phone"></i> Accéder à vos tableaux
-                      </Link>
+                      <SignedOut>
+                        <Link href="/sign-in" className="boxed-btn3">
+                          <i className="fa fa-phone"></i> Get started 
+                        </Link>
+                      </SignedOut>
+                      
+                      <SignedIn>
+                        <UserButton />
+                      </SignedIn>
              
                   </div>
                 </div>

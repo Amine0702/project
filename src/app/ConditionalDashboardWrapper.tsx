@@ -19,10 +19,14 @@ const ConditionalDashboardWrapper: React.FC<ConditionalDashboardWrapperProps> = 
     return <>{children}</>;
   }
 
-  const landingPages = ["/", "/landing"];
+  const landingPages = ["/", "/landing" ];
   const isLandingPage = landingPages.includes(pathname);
 
-  if (isLandingPage) {
+  const adminPages = ["/admin/apk" , "/admin/apk/vue","/admin/apk/profile","/admin/apk/users","/admin/apk/tableau","/admin/apk/sauvgarde","/admin/apk/historique","/admin/apk/analyseretard","/admin/apk/Export","/admin/apk/logs","/admin/apk/cycle", ];
+  const isadminPage = adminPages.includes(pathname);
+
+
+  if (isLandingPage || isadminPage) {
     return <>{children}</>;
   }
 

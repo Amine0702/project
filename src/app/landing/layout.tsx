@@ -1,4 +1,5 @@
 import { ClerkProvider } from "@clerk/nextjs";
+import "./landing.css";
 
 export default function LandingLayout({
     children,

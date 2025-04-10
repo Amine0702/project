@@ -29,7 +29,7 @@ import ModalNewProject from "../projects/ModalNewProject";
 import { PlusSquare } from "lucide-react";
 
 const taskColumns: GridColDef[] = [
-  { field: "title", headerName: "Title", width: 200 },
+  { field: "title", headerName: "Title", width: 220 },
   { field: "status", headerName: "Status", width: 150 },
   { field: "priority", headerName: "Priority", width: 150 },
   { field: "dueDate", headerName: "Due Date", width: 150 },
@@ -40,33 +40,45 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 const HomePage = () => {
   const [isModalNewProjectOpen, setIsModalNewProjectOpen] = useState(false);
 
-  // Récupération de l'utilisateur connecté via Clerk
+  // Récupération de l'utilisateur via Clerk
   const { user, isLoaded } = useUser();
-  if (!isLoaded || !user) return <div>Loading...</div>;
+  if (!isLoaded || !user)
+    return (
+      <div className="flex items-center justify-center min-h-screen text-xl font-bold">
+        Loading...
+      </div>
+    );
 
-  // Ici, nous utilisons un identifiant local fictif pour la requête des tâches.
-  // Dans votre application, remplacez cette valeur par l'identifiant retourné par votre API Laravel.
+  // Identifiant local fictif pour les tâches
   const localUserId = 1;
 
-  // Récupération des tâches de l'utilisateur via l'ID local (number)
+  // Requêtes API
   const {
     data: tasks,
     isLoading: tasksLoading,
     isError: tasksError,
   } = useGetTasksByUserQuery(localUserId);
 
-  // Récupération des projets via l'ID Clerk (string)
   const {
     data: projects,
     isLoading: projectsLoading,
     isError: projectsError,
   } = useGetProjectsByClerkUserQuery(user.id);
 
-  if (tasksLoading || projectsLoading) return <div>Loading...</div>;
+  if (tasksLoading || projectsLoading)
+    return (
+      <div className="flex items-center justify-center min-h-screen text-xl font-bold">
+        Loading...
+      </div>
+    );
   if (tasksError || projectsError || !tasks || !projects)
-    return <div>Error fetching data</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen text-xl font-bold text-red-500">
+        Error fetching data
+      </div>
+    );
 
-  // Calcul de la distribution des priorités des tâches
+  // Distribution des priorités
   const priorityCount = tasks.reduce((acc: Record<string, number>, task: Task) => {
     const { priority } = task;
     acc[priority as Priority] = (acc[priority as Priority] || 0) + 1;
@@ -77,7 +89,7 @@ const HomePage = () => {
     count: priorityCount[key],
   }));
 
-  // Calcul du statut des projets (basé sur la présence ou non d'une date de fin)
+  // Statut des projets
   const statusCount = projects.reduce((acc: Record<string, number>, project: Project) => {
     const status = project.endDate ? "Completed" : "Active";
     acc[status] = (acc[status] || 0) + 1;
@@ -88,7 +100,7 @@ const HomePage = () => {
     count: statusCount[key],
   }));
 
-  // Définition du mode sombre (fixé ici à false, adaptez selon votre state)
+  // Paramètres de couleurs pour les graphiques
   const isDarkMode = false;
   const chartColors = isDarkMode
     ? {
@@ -101,69 +113,84 @@ const HomePage = () => {
         bar: "#8884d8",
         barGrid: "#E0E0E0",
         pieFill: "#82ca9d",
-        text: "#000000",
+        text: "#333333",
       };
 
   return (
     <>
-      <div className="container h-full w-full bg-gray-100 bg-transparent p-4">
+      {/* En-tête créatif */}
+      <div className="container mx-auto px-6 py-6">
         <ModalNewProject
           isOpen={isModalNewProjectOpen}
           onClose={() => setIsModalNewProjectOpen(false)}
         />
-
-        <div className="flex flex-wrap-reverse gap-2 md:items-center">
-          <div className="flex flex-1 items-center gap-2 md:gap-4">
-            <Header name="Project Management Dashboard" />
+        <div className="flex flex-wrap-reverse items-center justify-between gap-4">
+          <div className="flex flex-1 items-center gap-4">
+            <Header
+              name="Project Management Dashboard"
+            />
           </div>
           <button
-            className="flex items-center rounded-md bg-blue-primary px-3 py-2 text-white hover:bg-blue-600"
+            className="flex items-center rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 px-5 py-3 text-white shadow-2xl transition transform hover:scale-105"
             onClick={() => setIsModalNewProjectOpen(true)}
           >
-            <PlusSquare className="mr-2 h-5 w-5" /> New Project
+            <PlusSquare className="mr-2 h-6 w-6" /> New Project
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Graphique : Distribution des tâches par priorité */}
-        <div className="rounded-lg bg-white p-4 shadow dark:bg-dark-secondary">
-          <h3 className="mb-4 text-lg font-semibold dark:text-white">
+      {/* Grille de cartes */}
+      <div className="container mx-auto grid grid-cols-1 gap-8 px-6 pb-8 md:grid-cols-2">
+        {/* Carte : Distribution des tâches */}
+        <div className="rounded-2xl bg-white/70 p-6 shadow-2xl ring-1 ring-white/30 backdrop-blur-sm dark:bg-gray-800/70 dark:ring-gray-700">
+          <h3 className="mb-6 text-2xl font-bold text-gray-800 dark:text-white">
             Task Priority Distribution
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={taskDistribution}>
-              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.barGrid} />
+              <CartesianGrid strokeDasharray="4 4" stroke={chartColors.barGrid} />
               <XAxis dataKey="name" stroke={chartColors.text} />
               <YAxis stroke={chartColors.text} />
-              <Tooltip contentStyle={{ width: "min-content", height: "min-content" }} />
-              <Legend />
-              <Bar dataKey="count" fill={chartColors.bar} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: isDarkMode ? "#333" : "#f9fafb",
+                  border: "none",
+                  borderRadius: "8px",
+                }}
+              />
+              <Legend wrapperStyle={{ color: chartColors.text, fontSize: "14px" }} />
+              <Bar dataKey="count" fill={chartColors.bar} radius={[10, 10, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Graphique : Statut des projets */}
-        <div className="rounded-lg bg-white p-4 shadow dark:bg-dark-secondary">
-          <h3 className="mb-4 text-lg font-semibold dark:text-white">
+        {/* Carte : Statut des projets */}
+        <div className="rounded-2xl bg-white/70 p-6 shadow-2xl ring-1 ring-white/30 backdrop-blur-sm dark:bg-gray-800/70 dark:ring-gray-700">
+          <h3 className="mb-6 text-2xl font-bold text-gray-800 dark:text-white">
             Project Status
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie dataKey="count" data={projectStatus} fill="#82ca9d" label>
+              <Pie dataKey="count" data={projectStatus} fill={chartColors.pieFill} label>
                 {projectStatus.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip />
-              <Legend />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: isDarkMode ? "#333" : "#f9fafb",
+                  border: "none",
+                  borderRadius: "8px",
+                }}
+              />
+              <Legend wrapperStyle={{ color: chartColors.text, fontSize: "14px" }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
 
-        {/* DataGrid affichant toutes les tâches de l'utilisateur */}
-        <div className="rounded-lg bg-white p-4 shadow dark:bg-dark-secondary md:col-span-2">
-          <h3 className="mb-4 text-lg font-semibold dark:text-white">Your Tasks</h3>
+        {/* Carte DataGrid : Vos tâches */}
+        <div className="rounded-2xl bg-white/70 p-6 shadow-2xl ring-1 ring-white/30 backdrop-blur-sm dark:bg-gray-800/70 dark:ring-gray-700 md:col-span-2">
+          <h3 className="mb-6 text-2xl font-bold text-gray-800 dark:text-white">Your Tasks</h3>
           <div style={{ height: 400, width: "100%" }}>
             <DataGrid
               rows={tasks}
